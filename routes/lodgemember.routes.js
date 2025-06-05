@@ -2,15 +2,16 @@
 import express from 'express';
 import * as lodgeMemberController from '../controllers/lodgemember.controller.js';
 import authMiddleware from '../middlewares/auth.middleware.js';
-import { authorizeExtended } from '../middlewares/authorizeExtended.middleware.js';
-// CORREÇÃO: Importa apenas de lodgemember.validator.js
-import { 
-  updateMyProfileRules, 
-  createLodgeMemberRules, // Regra para criar um LodgeMember
+// Importa o novo middleware de autorização por funcionalidade
+import { authorizeByFeature } from '../middlewares/authorizeByFeature.middleware.js'; // Você precisará criar este arquivo como discutido
+// Os validadores permanecem os mesmos
+import {
+  updateMyProfileRules,
+  createLodgeMemberRules,
   updateLodgeMemberByAdminRules,
-  lodgeMemberIdParamRule, // Regra para validar o parâmetro :id de LodgeMember
-  handleValidationErrors 
-} from '../validators/lodgemember.validator.js'; 
+  lodgeMemberIdParamRule,
+  handleValidationErrors
+} from '../validators/lodgemember.validator.js';
 
 // Importa as rotas de CargoExercido para aninhar
 import cargoExercidoRoutes from './cargoexercido.routes.js';
@@ -22,68 +23,67 @@ router.use(authMiddleware);
 
 // --- Rotas de Auto-serviço para o Maçom Logado (/me) ---
 router.get(
-    '/me', 
+    '/me',
+    authorizeByFeature('visualizarProprioPerfil'), // <-- Nova autorização
     lodgeMemberController.getMyProfile
 );
 
 router.put(
-    '/me', 
-    updateMyProfileRules(), 
-    handleValidationErrors, 
+    '/me',
+    authorizeByFeature('editarProprioPerfil'), // <-- Nova autorização
+    updateMyProfileRules(),
+    handleValidationErrors,
     lodgeMemberController.updateMyProfile
 );
 
-// --- Rotas Administrativas (Webmaster/Diretoria ou Cargos Específicos) ---
-const canManageAllMembers = authorizeExtended({
-    allowedCredentials: ['Webmaster', 'Diretoria'],
-    allowedCargos: ['Venerável Mestre', 'Secretário']
-});
+// --- Rotas Administrativas (Controladas por FuncionalidadePermissoes) ---
 
 // GET /api/lodgemembers - Listar todos os maçons
 router.get(
-    '/', 
-    canManageAllMembers, 
+    '/',
+    authorizeByFeature('listarTodosOsMembros'), // <-- Nova autorização
     lodgeMemberController.getAllLodgeMembers
 );
 
 // POST /api/lodgemembers - Criar um novo maçom (função administrativa)
 router.post(
-    '/', 
-    canManageAllMembers, 
-    createLodgeMemberRules(), // Usa as regras de criação do lodgemember.validator.js
-    handleValidationErrors, 
+    '/',
+    authorizeByFeature('criarNovoMembroPeloAdmin'), // <-- Nova autorização
+    createLodgeMemberRules(),
+    handleValidationErrors,
     lodgeMemberController.createLodgeMember
 );
 
 // GET /api/lodgemembers/:id - Obter um maçom específico por ID
 router.get(
-    '/:id', 
-    canManageAllMembers, 
-    lodgeMemberIdParamRule(), // Usa lodgeMemberIdParamRule do lodgemember.validator.js
+    '/:id',
+    authorizeByFeature('visualizarMembroPorAdmin'), // <-- Nova autorização
+    lodgeMemberIdParamRule(),
     handleValidationErrors,
     lodgeMemberController.getLodgeMemberById
 );
 
 // PUT /api/lodgemembers/:id - Atualizar um maçom específico por ID
 router.put(
-    '/:id', 
-    canManageAllMembers, 
-    updateLodgeMemberByAdminRules(), // Usa as regras de update do lodgemember.validator.js
+    '/:id',
+    authorizeByFeature('editarMembroPorAdmin'), // <-- Nova autorização
+    updateLodgeMemberByAdminRules(),
     handleValidationErrors,
     lodgeMemberController.updateLodgeMemberById
 );
 
 // DELETE /api/lodgemembers/:id - Deletar um maçom específico por ID
 router.delete(
-    '/:id', 
-    canManageAllMembers, 
-    lodgeMemberIdParamRule(), // Usa lodgeMemberIdParamRule do lodgemember.validator.js
+    '/:id',
+    authorizeByFeature('deletarMembroPorAdmin'), // <-- Nova autorização
+    lodgeMemberIdParamRule(),
     handleValidationErrors,
     lodgeMemberController.deleteLodgeMemberById
 );
 
 // --- Montar Rotas Aninhadas para Cargos Exercidos ---
 // Todas as rotas definidas em cargoExercidoRoutes serão prefixadas com /api/lodgemembers/:lodgeMemberId/cargos
+// A autorização para estas rotas será tratada dentro de 'cargoexercido.routes.js'
 router.use('/:lodgeMemberId/cargos', cargoExercidoRoutes);
 
 export default router;

@@ -14,6 +14,8 @@ import authRoutes from './routes/auth.routes.js';
 import lodgeMemberRoutes from './routes/lodgemember.routes.js';
 import familyMemberRoutes from './routes/familymember.routes.js';
 import cargoExercidoRoutes from './routes/cargoexercido.routes.js';
+import funcionalidadePermissaoRoutes from './routes/funcionalidadePermissao.routes.js'; // ADICIONE ESTA LINHA
+
 // Importe outras rotas aqui, se houver
 // import masonicSessionRoutes from './routes/masonicsession.routes.js';
 // import ataRoutes from './routes/ata.routes.js';
@@ -75,7 +77,7 @@ const startServer = async () => {
     // app.use('/api/publicacoes', publicacaoRoutes);
     // app.use('/api/harmonias', harmoniaRoutes);
     // app.use('/api/bibliotecas', bibliotecaRoutes);
-
+    app.use('/api/permissoes', funcionalidadePermissaoRoutes);
 
     // Iniciar o servidor Express
     app.listen(PORT, () => {

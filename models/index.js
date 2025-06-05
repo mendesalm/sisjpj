@@ -4,12 +4,13 @@ import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath, pathToFileURL } from 'url';
 
+
 // Configurar __dirname para ES Modules
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // Carrega as variáveis de ambiente do arquivo .env
-dotenv.config({ path: path.resolve(__dirname, '../../.env') });
+dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
 console.log('--- INICIANDO models/index.js (ESM Version) ---');
 
@@ -74,7 +75,9 @@ const modelDefinitions = [
   { key: 'Ata', file: 'ata.model.js' },
   { key: 'Publicacao', file: 'publicacao.model.js' },
   { key: 'Harmonia', file: 'harmonia.model.js' },
-  { key: 'Biblioteca', file: 'biblioteca.model.js' }
+  { key: 'Biblioteca', file: 'biblioteca.model.js' },
+  { key: 'FuncionalidadePermissao', file: 'funcionalidadepermissao.model.js' }
+
 ];
 
 const loadModel = async (modelFileName) => {
@@ -113,6 +116,13 @@ export const initModels = async () => {
     }
   });
   console.log('[initModels] Associações dos modelos concluídas.');
+  
+  // Dentro de initModels, antes de "db.initialized = true;"
+  console.log('[DEBUG models/index.js] Chaves do objeto db após carregar modelos:', Object.keys(db));
+  console.log('[DEBUG models/index.js] db.FuncionalidadePermissao existe?', !!db.FuncionalidadePermissao);
+  if(db.FuncionalidadePermissao){
+      console.log('[DEBUG models/index.js] Nome do modelo FuncionalidadePermissao:', db.FuncionalidadePermissao.name);
+  }
   db.initialized = true; 
   return db;
 };

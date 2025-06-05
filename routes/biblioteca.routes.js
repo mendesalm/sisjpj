@@ -1,36 +1,61 @@
 // backend/routes/biblioteca.routes.js
 import express from 'express';
+import * as bibliotecaController from '../controllers/biblioteca.controller.js'; // Certifique-se que este controller existe e está correto
 import authMiddleware from '../middlewares/auth.middleware.js';
-import { authorizeExtended } from '../middlewares/authorizeExtended.middleware.js';
-// import * as bibliotecaController from '../controllers/biblioteca.controller.js';
-// import { uploadLivro } from '../middlewares/upload.middleware.js';
-// import { bibliotecaValidationRules, handleValidationErrors } from '../validators/biblioteca.validator.js';
+// Removido: import { authorizeExtended } from '../middlewares/authorizeExtended.middleware.js';
+// Adicionado: Importa o novo middleware de autorização por funcionalidade
+import { authorizeByFeature } from '../middlewares/authorizeByFeature.middleware.js';
+import { uploadBiblioteca as uploadLivro } from '../middlewares/upload.middleware.js'; // Renomeando para uploadLivro para clareza, se desejar, ou mantenha uploadBiblioteca
+import {
+  createLivroValidator, // Você precisará criar/definir estes validadores
+  updateLivroValidator,
+  livroIdValidator
+} from '../validators/biblioteca.validator.js'; // Você precisará criar este arquivo de validador
 
 const router = express.Router();
 
-const canManageBiblioteca = authorizeExtended({
-  allowedCredentials: ['Webmaster', 'Diretoria'],
-  allowedCargos: ['Venerável Mestre', 'Bibliotecário'] // Bibliotecário é apropriado
-});
-
+// Aplica autenticação a todas as rotas de biblioteca primeiro
 router.use(authMiddleware);
-router.use(canManageBiblioteca);
 
-// --- ROTAS CRUD PARA BIBLIOTECA ---
+// POST /api/biblioteca - Criar um novo livro
+router.post(
+  '/',
+  authorizeByFeature('adicionarLivroBiblioteca'), // <-- Nova autorização
+  uploadLivro.single('bibliotecaFile'), // 'bibliotecaFile' ou 'livroFile' conforme sua config de upload
+  createLivroValidator,
+  bibliotecaController.createLivro
+);
 
-// POST /api/biblioteca
-// router.post('/', uploadLivro.single('arquivoLivro'), bibliotecaValidationRules(), handleValidationErrors, bibliotecaController.createLivro);
+// GET /api/biblioteca - Obter todos os livros
+router.get(
+  '/',
+  authorizeByFeature('listarLivrosBiblioteca'), // <-- Nova autorização
+  bibliotecaController.getAllLivros
+);
 
-// GET /api/biblioteca
-// router.get('/', bibliotecaController.getAllLivros);
+// GET /api/biblioteca/:id - Obter um livro específico
+router.get(
+  '/:id',
+  authorizeByFeature('visualizarDetalhesLivroBiblioteca'), // <-- Nova autorização
+  livroIdValidator,
+  bibliotecaController.getLivroById
+);
 
-// GET /api/biblioteca/:id
-// router.get('/:id', bibliotecaController.getLivroById);
+// PUT /api/biblioteca/:id - Atualizar um livro
+router.put(
+  '/:id',
+  authorizeByFeature('editarLivroBiblioteca'), // <-- Nova autorização
+  uploadLivro.single('bibliotecaFile'),
+  updateLivroValidator,
+  bibliotecaController.updateLivro
+);
 
-// PUT /api/biblioteca/:id
-// router.put('/:id', uploadLivro.single('arquivoLivro'), bibliotecaValidationRules(), handleValidationErrors, bibliotecaController.updateLivro);
-
-// DELETE /api/biblioteca/:id
-// router.delete('/:id', bibliotecaController.deleteLivro);
+// DELETE /api/biblioteca/:id - Deletar um livro
+router.delete(
+  '/:id',
+  authorizeByFeature('deletarLivroBiblioteca'), // <-- Nova autorização
+  livroIdValidator,
+  bibliotecaController.deleteLivro
+);
 
 export default router;
