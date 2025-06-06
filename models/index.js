@@ -4,7 +4,6 @@ import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath, pathToFileURL } from 'url';
 
-
 // Configurar __dirname para ES Modules
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -20,13 +19,12 @@ const missingEnvVars = requiredEnvVars.filter(varName => !process.env[varName]);
 if (missingEnvVars.length > 0) {
   console.error(`ERRO CRÍTICO: Variáveis de ambiente faltando no .env: ${missingEnvVars.join(', ')}`);
   console.error("Verifique o caminho em dotenv.config() e o conteúdo do seu arquivo .env.");
-  process.exit(1); 
+  process.exit(1);
 } else {
-  console.log('DEBUG: Variáveis de ambiente requeridas para DB encontradas.');
-  console.log(`DEBUG: DB_DIALECT lido do .env = ${process.env.DB_DIALECT}`);
+  console.log(`[DEBUG .env] DB_HOST lido pelo dotenv: ${process.env.DB_HOST}`);
+  console.log(`[DEBUG .env] DB_NAME lido pelo dotenv: ${process.env.DB_NAME}`);
 }
 
-// Armazena o dialeto em uma constante ANTES de usar no construtor
 const dbDialect = process.env.DB_DIALECT;
 const dbName = process.env.DB_NAME;
 const dbUser = process.env.DB_USER;
@@ -38,7 +36,7 @@ const sequelizeLogging = process.env.SEQUELIZE_LOGGING === 'true' ? console.log 
 
 console.log(`DEBUG: Configurando Sequelize com Dialeto (constante): ${dbDialect}, Host: ${dbHost}, DB: ${dbName}`);
 
-if (!dbDialect) { // Checagem extra
+if (!dbDialect) {
     console.error("ERRO CRÍTICO: dbDialect (process.env.DB_DIALECT) é undefined antes de new Sequelize().");
     process.exit(1);
 }
@@ -49,23 +47,18 @@ export const sequelize = new Sequelize(
   dbPass,
   {
     host: dbHost,
-    dialect: dbDialect, // Usa a constante local
+    dialect: dbDialect,
     port: dbPort,
     logging: sequelizeLogging,
     timezone: dbTimezone,
   }
 );
 
-if (sequelize && sequelize.options) {
-    console.log('>>> DEBUG: Instância sequelize criada. Dialeto configurado internamente:', sequelize.options.dialect);
-} else {
-    console.error('>>> DEBUG: Falha ao criar instância sequelize ou acessar options.');
-}
-
 const db = {};
 db.Sequelize = Sequelize;
 db.sequelize = sequelize;
 
+// Array com TODAS as definições de modelos do projeto
 const modelDefinitions = [
   { key: 'LodgeMember', file: 'lodgemember.model.js' },
   { key: 'FamilyMember', file: 'familymember.model.js' },
@@ -76,15 +69,18 @@ const modelDefinitions = [
   { key: 'Publicacao', file: 'publicacao.model.js' },
   { key: 'Harmonia', file: 'harmonia.model.js' },
   { key: 'Biblioteca', file: 'biblioteca.model.js' },
-  { key: 'FuncionalidadePermissao', file: 'funcionalidadepermissao.model.js' }
-
+  { key: 'VisitanteSessao', file: 'visitantesessao.model.js' },
+  { key: 'FuncionalidadePermissao', file: 'funcionalidadepermissao.model.js' },
+  { key: 'Comissao', file: 'comissao.model.js' },
+  { key: 'MembroComissao', file: 'membro_comissao.model.js' },
+  { key: 'Visita', file: 'visitacao.model.js' },
 ];
 
 const loadModel = async (modelFileName) => {
   const absolutePath = path.join(__dirname, modelFileName);
   const modelURL = pathToFileURL(absolutePath).href;
   const importedModule = await import(modelURL);
-  const defineFunction = importedModule.default; 
+  const defineFunction = importedModule.default;
   if (typeof defineFunction !== 'function') {
     const errorMsg = `[loadModel] ERRO CRÍTICO: ${modelFileName} não exportou uma função default. Recebido: ${typeof defineFunction}`;
     console.error(errorMsg);
@@ -99,9 +95,15 @@ export const initModels = async () => {
   }
   console.log('[initModels] Iniciando carregamento e definição dos modelos...');
   for (const modelDef of modelDefinitions) {
-    const defineFunction = await loadModel(modelDef.file);
-    db[modelDef.key] = defineFunction(sequelize, DataTypes);
-    console.log(`[initModels] Modelo db.${modelDef.key} carregado e definido.`);
+    try {
+      const defineFunction = await loadModel(modelDef.file);
+      const model = defineFunction(sequelize, DataTypes);
+      db[modelDef.key] = model;
+      console.log(`[initModels] Modelo db.${modelDef.key} carregado e definido.`);
+    } catch (error) {
+        console.error(`[initModels] FALHA ao carregar o modelo do arquivo ${modelDef.file}:`, error);
+        process.exit(1);
+    }
   }
   console.log('[initModels] Todos os modelos foram definidos e atribuídos ao objeto db.');
 
@@ -110,20 +112,17 @@ export const initModels = async () => {
     if (db[modelName] && typeof db[modelName].associate === 'function') {
       try {
         db[modelName].associate(db);
+        console.log(`[initModels] Associação para ${modelName} executada.`);
       } catch (assocError) {
         console.error(`[initModels] ERRO ao executar associate() para ${modelName}:`, assocError);
       }
     }
   });
   console.log('[initModels] Associações dos modelos concluídas.');
-  
-  // Dentro de initModels, antes de "db.initialized = true;"
+
   console.log('[DEBUG models/index.js] Chaves do objeto db após carregar modelos:', Object.keys(db));
-  console.log('[DEBUG models/index.js] db.FuncionalidadePermissao existe?', !!db.FuncionalidadePermissao);
-  if(db.FuncionalidadePermissao){
-      console.log('[DEBUG models/index.js] Nome do modelo FuncionalidadePermissao:', db.FuncionalidadePermissao.name);
-  }
-  db.initialized = true; 
+
+  db.initialized = true;
   return db;
 };
 
