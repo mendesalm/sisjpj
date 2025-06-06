@@ -69,3 +69,48 @@ const bibliotecaFileFilter = (req, file, cb) => { /* ... filtro para livros (ex:
 export const uploadLivro = multer({ storage: bibliotecaDiskStorage, /* limits, fileFilter */ });
 
 // Adicione outras configurações de upload conforme necessário
+// backend/middlewares/upload.middleware.js
+// ... (código existente para uploadAta, uploadPublicacao, uploadLivro) ...
+
+// --- Configuração para Upload de Áudios (Harmonia) ---
+const harmoniaStoragePath = path.join(__dirname, '..', 'uploads', 'harmonia');
+
+// Garante que o diretório de upload para áudios da harmonia exista
+if (!fs.existsSync(harmoniaStoragePath)) {
+  fs.mkdirSync(harmoniaStoragePath, { recursive: true });
+  console.log(`Diretório de upload para áudios da harmonia criado em: ${harmoniaStoragePath}`);
+}
+
+const harmoniaDiskStorage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, harmoniaStoragePath);
+  },
+  filename: function (req, file, cb) {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    // Preserva o nome original do arquivo um pouco mais, mas ainda garante unicidade
+    cb(null, `harmonia-${uniqueSuffix}-${file.originalname.replace(/\s+/g, '_')}`);
+  }
+});
+
+const harmoniaFileFilter = (req, file, cb) => {
+  // Tipos de arquivo de áudio comuns
+  const allowedTypes = /mpeg|mp3|wav|aac|ogg|m4a|flac|wma/; // Adicionado flac, wma
+  const mimetype = allowedTypes.test(file.mimetype);
+  // Verifique também a extensão, pois o mimetype pode ser genérico como 'application/octet-stream'
+  const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+
+  if (mimetype || extname) { // Permitir se mimetype OU extname corresponderem
+    return cb(null, true);
+  }
+  cb(new Error('Tipo de arquivo não suportado para harmonia! Apenas áudios (MP3, WAV, AAC, OGG, M4A, FLAC, WMA) são permitidos.'), false);
+};
+
+export const uploadAudio = multer({
+  storage: harmoniaDiskStorage,
+  limits: {
+    fileSize: 1024 * 1024 * 50 // Limite de 50MB para arquivos de áudio (ajuste conforme necessário)
+  },
+  fileFilter: harmoniaFileFilter
+});
+
+// ... (resto do seu arquivo upload.middleware.js)

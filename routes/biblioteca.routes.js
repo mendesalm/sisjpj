@@ -5,7 +5,7 @@ import authMiddleware from '../middlewares/auth.middleware.js';
 // Removido: import { authorizeExtended } from '../middlewares/authorizeExtended.middleware.js';
 // Adicionado: Importa o novo middleware de autorização por funcionalidade
 import { authorizeByFeature } from '../middlewares/authorizeByFeature.middleware.js';
-import { uploadBiblioteca as uploadLivro } from '../middlewares/upload.middleware.js'; // Renomeando para uploadLivro para clareza, se desejar, ou mantenha uploadBiblioteca
+import { uploadLivro } from '../middlewares/upload.middleware.js';
 import {
   createLivroValidator, // Você precisará criar/definir estes validadores
   updateLivroValidator,
