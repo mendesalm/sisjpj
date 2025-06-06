@@ -96,6 +96,9 @@ export default (sequelize, DataTypes) => {
     if (models.Biblioteca && models.Biblioteca.getAttributes().lodgeMemberId) {
         LodgeMember.hasMany(models.Biblioteca, { as: 'livrosCadastrados', foreignKey: 'lodgeMemberId' });
     }
+    if (models.Emprestimo) {
+    LodgeMember.hasMany(models.Emprestimo, { as: 'emprestimos', foreignKey: 'membroId' });
+    }
   };
   return LodgeMember;
 };
