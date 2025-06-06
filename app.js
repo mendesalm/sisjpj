@@ -19,7 +19,7 @@ import ataRoutes from './routes/ata.routes.js';
 import publicacaoRoutes from './routes/publicacao.routes.js';
 import harmoniaRoutes from './routes/harmonia.routes.js';
 import bibliotecaRoutes from './routes/biblioteca.routes.js';
-
+import visitaRoutes from './routes/visitacao.routes.js';
 
 // Configurar __dirname para ES Modules
 const __filename = fileURLToPath(import.meta.url);
@@ -63,7 +63,7 @@ const startServer = async () => {
     app.use('/api/harmonias', harmoniaRoutes);
     app.use('/api/bibliotecas', bibliotecaRoutes);
     app.use('/api/permissoes', funcionalidadePermissaoRoutes);
-
+    app.use('/api/visitas', visitaRoutes);
     // Iniciar o servidor Express
     app.listen(PORT, () => {
       console.log(`Servidor backend rodando na porta ${PORT}`);
