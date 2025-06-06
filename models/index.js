@@ -75,7 +75,9 @@ const modelDefinitions = [
   { key: 'MembroComissao', file: 'membro_comissao.model.js' },
   { key: 'Visita', file: 'visitacao.model.js' },
   { key: 'Condecoracao', file: 'condecoracao.model.js' },
-  { key: 'Emprestimo', file: 'emprestimo.model.js' }
+  { key: 'Emprestimo', file: 'emprestimo.model.js' },
+  { key: 'Conta', file: 'conta.model.js' },
+  { key: 'Lancamento', file: 'lancamento.model.js' }
 ];
 
 const loadModel = async (modelFileName) => {

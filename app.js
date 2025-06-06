@@ -11,6 +11,8 @@ import { sequelize, initModels } from './models/index.js';
 import authRoutes from './routes/auth.routes.js';
 import lodgeMemberRoutes from './routes/lodgemember.routes.js';
 import familyMemberRoutes from './routes/familymember.routes.js';
+import cargoExercidoRoutes from './routes/cargoexercido.routes.js';
+import funcionalidadePermissaoRoutes from './routes/funcionalidadePermissao.routes.js';
 import masonicSessionRoutes from './routes/masonicsession.routes.js';
 import bibliotecaRoutes from './routes/biblioteca.routes.js';
 import harmoniaRoutes from './routes/harmonia.routes.js';
@@ -19,6 +21,9 @@ import publicacaoRoutes from './routes/publicacao.routes.js';
 import comissaoRoutes from './routes/comissao.routes.js'; // Módulo Comissões
 import visitaRoutes from './routes/visitacao.routes.js'; // Módulo Visitações
 import { emprestimoRoutes, emprestimoMembroRoutes } from './routes/emprestimo.routes.js'; // Módulo Empréstimos
+import financeiroRoutes from './routes/financeiro.routes.js'; // Módulo Financeiro
+
+
 
 // O arquivo cargoexercido.routes.js é aninhado e não precisa ser montado aqui.
 
@@ -56,16 +61,18 @@ const startServer = async () => {
 
     // Montagem de todas as rotas de nível superior da API
     app.use('/api/auth', authRoutes);
+    app.use('/api/permissoes', funcionalidadePermissaoRoutes);
     app.use('/api/lodgemembers', lodgeMemberRoutes); // Gerencia suas próprias rotas aninhadas (/cargos, /condecoracoes)
     app.use('/api/familymembers', familyMemberRoutes);
     app.use('/api/sessions', masonicSessionRoutes); // Corrigido de 'masonicsessions' para 'sessions' para ser mais idiomático
     app.use('/api/publicacoes', publicacaoRoutes);
     app.use('/api/harmonia', harmoniaRoutes); // Corrigido de 'harmonias' para 'harmonia'
     app.use('/api/biblioteca', bibliotecaRoutes); // Corrigido de 'bibliotecas' para 'biblioteca'
+    app.use('/api/cargoexercido', cargoExercidoRoutes);
     //app.use('/api/atas', ataRoutes);
     app.use('/api/comissoes', comissaoRoutes);
     app.use('/api/visitas', visitaRoutes);
-    
+    app.use('/api/financeiro', financeiroRoutes);
     // Montagem das rotas de Empréstimo
     app.use('/api/emprestimos', emprestimoRoutes);
     app.use('/api/lodgemembers/:membroId/emprestimos', emprestimoMembroRoutes);
