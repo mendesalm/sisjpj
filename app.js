@@ -15,7 +15,7 @@ import masonicSessionRoutes from './routes/masonicsession.routes.js';
 import bibliotecaRoutes from './routes/biblioteca.routes.js';
 import harmoniaRoutes from './routes/harmonia.routes.js';
 import publicacaoRoutes from './routes/publicacao.routes.js';
-import ataRoutes from './routes/ata.routes.js';
+//import ataRoutes from './routes/ata.routes.js';
 import comissaoRoutes from './routes/comissao.routes.js'; // Módulo Comissões
 import visitaRoutes from './routes/visitacao.routes.js'; // Módulo Visitações
 import { emprestimoRoutes, emprestimoMembroRoutes } from './routes/emprestimo.routes.js'; // Módulo Empréstimos
@@ -62,7 +62,7 @@ const startServer = async () => {
     app.use('/api/publicacoes', publicacaoRoutes);
     app.use('/api/harmonia', harmoniaRoutes); // Corrigido de 'harmonias' para 'harmonia'
     app.use('/api/biblioteca', bibliotecaRoutes); // Corrigido de 'bibliotecas' para 'biblioteca'
-    app.use('/api/atas', ataRoutes);
+    //app.use('/api/atas', ataRoutes);
     app.use('/api/comissoes', comissaoRoutes);
     app.use('/api/visitas', visitaRoutes);
     
