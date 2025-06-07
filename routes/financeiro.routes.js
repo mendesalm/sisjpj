@@ -8,6 +8,8 @@ import {
   lancamentoRules,
   relatorioQueryRules,
   contaIdParamRule,
+  orcamentoRules, // <-- Importado
+  orcamentoQueryRules, // <-- Importado
   handleValidationErrors
 } from '../validators/financeiro.validator.js';
 
@@ -17,8 +19,6 @@ const router = express.Router();
 router.use(authMiddleware);
 
 // --- Rotas para Plano de Contas ---
-
-// POST /api/financeiro/contas - Criar uma nova conta (Receita/Despesa)
 router.post(
     '/contas',
     authorizeByFeature('gerenciarPlanoDeContas'),
@@ -27,14 +27,12 @@ router.post(
     financeiroController.createConta
 );
 
-// GET /api/financeiro/contas - Listar todas as contas do plano
 router.get(
     '/contas',
-    authorizeByFeature('visualizarRelatorioFinanceiro'), // Reutilizando permissão de visualização
+    authorizeByFeature('visualizarRelatorioFinanceiro'),
     financeiroController.getAllContas
 );
 
-// PUT /api/financeiro/contas/:id - Atualizar uma conta existente
 router.put(
     '/contas/:id',
     authorizeByFeature('gerenciarPlanoDeContas'),
@@ -45,7 +43,6 @@ router.put(
     financeiroController.updateConta
 );
 
-// DELETE /api/financeiro/contas/:id - Deletar uma conta (com validação de segurança no controller)
 router.delete(
     '/contas/:id',
     authorizeByFeature('gerenciarPlanoDeContas'),
@@ -56,8 +53,6 @@ router.delete(
 
 
 // --- Rotas para Lançamentos ---
-
-// POST /api/financeiro/lancamentos - Criar um novo lançamento
 router.post(
   '/lancamentos',
   authorizeByFeature('criarLancamentoFinanceiro'),
@@ -66,7 +61,6 @@ router.post(
   financeiroController.createLancamento
 );
 
-// GET /api/financeiro/lancamentos - Listar lançamentos (relatório de extrato)
 router.get(
     '/lancamentos',
     authorizeByFeature('visualizarRelatorioFinanceiro'),
@@ -74,9 +68,25 @@ router.get(
 );
 
 
-// --- Rotas para Relatórios ---
+// --- Rotas para Orçamento ---
+router.post(
+  '/orcamentos',
+  authorizeByFeature('gerenciarOrcamento'),
+  orcamentoRules,
+  handleValidationErrors,
+  financeiroController.setOrcamento
+);
 
-// GET /api/financeiro/balancete - Obter o balancete
+router.get(
+  '/relatorios/orcamentario',
+  authorizeByFeature('visualizarRelatorioOrcamentario'),
+  orcamentoQueryRules,
+  handleValidationErrors,
+  financeiroController.getRelatorioOrcamentario
+);
+
+
+// --- Rotas para Relatórios ---
 router.get(
     '/balancete',
     authorizeByFeature('visualizarRelatorioFinanceiro'),
@@ -85,7 +95,6 @@ router.get(
     financeiroController.getBalancete
 );
 
-// GET /api/financeiro/balancete/pdf - Exportar o balancete em PDF
 router.get(
     '/balancete/pdf',
     authorizeByFeature('exportarRelatorioFinanceiro'),

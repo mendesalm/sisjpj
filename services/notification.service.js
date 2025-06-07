@@ -119,3 +119,47 @@ export const alertarSobreLivrosAtrasados = async () => {
     console.error("Erro ao enviar alerta de livros atrasados:", error);
   }
 };
+
+export const notificarProximoDaFila = async (livroId, models) => {
+  const { Reserva, Biblioteca, LodgeMember, sendEmail } = models;
+  try {
+    const proximaReserva = await Reserva.findOne({
+      where: { livroId, status: 'Ativa' },
+      order: [['dataReserva', 'ASC']],
+      include: [
+        { model: Biblioteca, as: 'livro' },
+        { model: LodgeMember, as: 'membro', attributes: ['Email', 'NomeCompleto'] }
+      ]
+    });
+
+    if (!proximaReserva) {
+      return false; // Não há ninguém na fila de reserva
+    }
+
+    // Define o prazo para retirada
+    const dataExpiracao = new Date();
+    dataExpiracao.setDate(dataExpiracao.getDate() + 3); // Prazo de 3 dias
+
+    // Atualiza o status da reserva e do livro
+    await proximaReserva.update({
+      status: 'Notificada',
+      notificadoEm: new Date(),
+      reservaExpiraEm: dataExpiracao
+    });
+    await proximaReserva.livro.update({ status: 'Reservado' });
+
+    // Envia o email de notificação
+    const subject = `SysJPJ - Livro Reservado Disponível: "${proximaReserva.livro.titulo}"`;
+    const text = `Olá, ${proximaReserva.membro.NomeCompleto}. O livro "${proximaReserva.livro.titulo}", que você reservou, está agora disponível para retirada. Você tem até ${dataExpiracao.toLocaleDateString('pt-BR')} para retirá-lo.`;
+    const html = `<p>Olá, <strong>${proximaReserva.membro.NomeCompleto}</strong>.</p><p>O livro <strong>"${proximaReserva.livro.titulo}"</strong>, que você reservou, está agora disponível para retirada na biblioteca.</p><p>Você tem até o dia <strong>${dataExpiracao.toLocaleDateString('pt-BR')}</strong> para retirá-lo. Após essa data, a sua reserva irá expirar.</p>`;
+    
+    await sendEmail({ to: proximaReserva.membro.Email, subject, text, html });
+
+    console.log(`Membro ${proximaReserva.membro.NomeCompleto} notificado sobre a disponibilidade do livro ID ${livroId}.`);
+    return true; // Notificação enviada com sucesso
+
+  } catch (error) {
+    console.error(`Erro ao notificar próximo da fila para o livro ID ${livroId}:`, error);
+    return false;
+  }
+};

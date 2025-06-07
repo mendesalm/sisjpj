@@ -11,6 +11,7 @@ import {
   updateLivroValidator,
   livroIdValidator
 } from '../validators/biblioteca.validator.js'; // Você precisará criar este arquivo de validador
+import reservaRoutes from './reserva.routes.js';
 
 const router = express.Router();
 
@@ -57,5 +58,7 @@ router.delete(
   livroIdValidator,
   bibliotecaController.deleteLivro
 );
+
+router.use('/:livroId/reservas', reservaRoutes);
 
 export default router;

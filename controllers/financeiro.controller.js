@@ -1,9 +1,9 @@
 // controllers/financeiro.controller.js
-// VERSÃO FINAL: Funcionalidade de PDF e CRUD de Contas foram reativadas e integradas.
+// VERSÃO ATUALIZADA: Funcionalidades de Gestão de Orçamento foram incorporadas.
 import db from '../models/index.js';
 import { gerarPdfBalancete } from '../utils/pdfGenerator.js';
-const { Lancamento, Conta, LodgeMember, Sequelize } = db;
-const { Op } = Sequelize;
+const { Orcamento, Lancamento, Conta, LodgeMember, Sequelize } = db;
+const { Op, fn, col } = Sequelize;
 
 // --- CRUD para o Plano de Contas ---
 
@@ -124,6 +124,79 @@ export const getAllLancamentos = async (req, res) => {
     res.status(500).json({ message: 'Erro ao buscar lançamentos.', errorDetails: error.message });
   }
 };
+
+
+// --- FUNÇÕES DE ORÇAMENTO ---
+
+// Definir ou atualizar o orçamento para uma conta em um ano específico
+export const setOrcamento = async (req, res) => {
+  const { contaId, ano, valorOrcado } = req.body;
+  try {
+    const [orcamento, created] = await Orcamento.findOrCreate({
+      where: { contaId, ano },
+      defaults: { valorOrcado }
+    });
+
+    if (!created) { // Se já existia, atualiza
+      orcamento.valorOrcado = valorOrcado;
+      await orcamento.save();
+    }
+    res.status(created ? 201 : 200).json(orcamento);
+  } catch (error) {
+    res.status(500).json({ message: 'Erro ao definir orçamento.', errorDetails: error.message });
+  }
+};
+
+// Gerar relatório de Orçado vs. Realizado
+export const getRelatorioOrcamentario = async (req, res) => {
+    const { ano } = req.query;
+    if (!ano) {
+        return res.status(400).json({ message: 'O ano é obrigatório para gerar o relatório orçamentário.' });
+    }
+    try {
+        const contas = await Conta.findAll({
+            include: [{
+                model: Orcamento,
+                as: 'orcamentos',
+                where: { ano },
+                required: false // Traz contas mesmo sem orçamento definido
+            }],
+            order: [['tipo', 'ASC'], ['nome', 'ASC']]
+        });
+        
+        const lancamentosAgregados = await Lancamento.findAll({
+            attributes: [
+                'contaId',
+                [fn('SUM', col('valor')), 'valorRealizado']
+            ],
+            where: {
+                dataLancamento: { [Op.between]: [`${ano}-01-01`, `${ano}-12-31`] }
+            },
+            group: ['contaId']
+        });
+        
+        const realizadosMap = new Map(lancamentosAgregados.map(item => [item.contaId, parseFloat(item.get('valorRealizado'))]));
+
+        const relatorio = contas.map(conta => {
+            const orcado = conta.orcamentos && conta.orcamentos[0] ? parseFloat(conta.orcamentos[0].valorOrcado) : 0;
+            const realizado = realizadosMap.get(conta.id) || 0;
+            const diferenca = orcado - realizado;
+            return {
+                contaId: conta.id,
+                nomeConta: conta.nome,
+                tipo: conta.tipo,
+                valorOrcado: orcado,
+                valorRealizado: realizado,
+                diferenca: diferenca
+            };
+        });
+
+        res.status(200).json(relatorio);
+    } catch (error) {
+        res.status(500).json({ message: 'Erro ao gerar relatório orçamentário.', errorDetails: error.message });
+    }
+};
+
 
 // --- Relatórios ---
 

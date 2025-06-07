@@ -42,13 +42,21 @@ export default (sequelize) => {
         },
         // Hook AFTER a loan is updated
         afterUpdate: async (emprestimo, options) => {
+          // Se o livro foi devolvido (dataDevolucaoReal foi preenchida)
           if (emprestimo.dataValues.dataDevolucaoReal !== emprestimo._previousDataValues.dataDevolucaoReal && emprestimo.dataValues.dataDevolucaoReal !== null) {
-            // O livro foi devolvido (dataDevolucaoReal foi preenchida)
-            const Livro = sequelize.models.Biblioteca;
-            await Livro.update(
-              { status: 'Disponível' },
-              { where: { id: emprestimo.livroId }, transaction: options.transaction }
-            );
+            // Importa dinamicamente para evitar dependências circulares
+            const { notificarProximoDaFila } = await import('../services/notification.service.js');
+            // Tenta notificar o próximo da fila de reserva
+            const notificado = await notificarProximoDaFila(emprestimo.livroId, sequelize.models);
+            
+            // Se ninguém foi notificado (não havia reservas), o livro fica 'Disponível'
+            if (!notificado) {
+              const Livro = sequelize.models.Biblioteca;
+              await Livro.update(
+                { status: 'Disponível' },
+                { where: { id: emprestimo.livroId }, transaction: options.transaction }
+              );
+            }
           }
         },
         // Hook BEFORE a loan is destroyed (in case you allow deleting active loans)

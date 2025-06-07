@@ -59,3 +59,12 @@ export const relatorioQueryRules = [
   query('mes').notEmpty().withMessage('O parâmetro "mes" é obrigatório.').isInt({ min: 1, max: 12 }).withMessage('O mês deve ser entre 1 e 12.'),
   query('ano').notEmpty().withMessage('O parâmetro "ano" é obrigatório.').isInt({ min: 2000, max: 2100 }).withMessage('O ano deve ser um ano válido.'),
 ];
+export const orcamentoRules = [
+  body('ano').isInt({ min: 2000, max: 2100 }).withMessage('Ano do orçamento é obrigatório e deve ser válido.'),
+  body('valorOrcado').isDecimal({ decimal_digits: '2' }).withMessage('Valor orçado deve ser um decimal com 2 casas.').toFloat(),
+  body('contaId').isInt({ gt: 0 }).withMessage('ID da conta é obrigatório.'),
+];
+
+export const orcamentoQueryRules = [
+  query('ano').notEmpty().isInt({min: 2000, max: 2100}).withMessage('O ano é obrigatório e deve ser um ano válido.'),
+];
