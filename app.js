@@ -17,15 +17,17 @@ import masonicSessionRoutes from './routes/masonicsession.routes.js';
 import bibliotecaRoutes from './routes/biblioteca.routes.js';
 import harmoniaRoutes from './routes/harmonia.routes.js';
 import publicacaoRoutes from './routes/publicacao.routes.js';
-//import ataRoutes from './routes/ata.routes.js';
-import comissaoRoutes from './routes/comissao.routes.js'; // Módulo Comissões
-import visitaRoutes from './routes/visitacao.routes.js'; // Módulo Visitações
-import { emprestimoRoutes, emprestimoMembroRoutes } from './routes/emprestimo.routes.js'; // Módulo Empréstimos
-import financeiroRoutes from './routes/financeiro.routes.js'; // Módulo Financeiro
+import comissaoRoutes from './routes/comissao.routes.js';
+import visitaRoutes from './routes/visitacao.routes.js';
+import { emprestimoRoutes, emprestimoMembroRoutes } from './routes/emprestimo.routes.js';
+import financeiroRoutes from './routes/financeiro.routes.js';
+import relatoriosRoutes from './routes/relatorios.routes.js';
+import eventoRoutes from './routes/evento.routes.js';
+import avisoRoutes from './routes/aviso.routes.js';
+import patrimonioRoutes from './routes/patrimonio.routes.js';
 
-
-
-// O arquivo cargoexercido.routes.js é aninhado e não precisa ser montado aqui.
+// Importa o agendador de tarefas
+import { startScheduler } from './scheduler.js';
 
 // Configurar __dirname para ES Modules
 const __filename = fileURLToPath(import.meta.url);
@@ -57,26 +59,31 @@ const startServer = async () => {
     await initModels();
     console.log('Modelos Sequelize inicializados e prontos.');
 
+    // Inicia o agendador de tarefas APÓS os modelos estarem prontos
+    startScheduler();
+
     console.log('Configurando rotas da API...');
 
     // Montagem de todas as rotas de nível superior da API
     app.use('/api/auth', authRoutes);
     app.use('/api/permissoes', funcionalidadePermissaoRoutes);
-    app.use('/api/lodgemembers', lodgeMemberRoutes); // Gerencia suas próprias rotas aninhadas (/cargos, /condecoracoes)
+    app.use('/api/lodgemembers', lodgeMemberRoutes);
     app.use('/api/familymembers', familyMemberRoutes);
-    app.use('/api/sessions', masonicSessionRoutes); // Corrigido de 'masonicsessions' para 'sessions' para ser mais idiomático
+    app.use('/api/sessions', masonicSessionRoutes);
     app.use('/api/publicacoes', publicacaoRoutes);
-    app.use('/api/harmonia', harmoniaRoutes); // Corrigido de 'harmonias' para 'harmonia'
-    app.use('/api/biblioteca', bibliotecaRoutes); // Corrigido de 'bibliotecas' para 'biblioteca'
+    app.use('/api/harmonia', harmoniaRoutes);
+    app.use('/api/biblioteca', bibliotecaRoutes);
     app.use('/api/cargoexercido', cargoExercidoRoutes);
-    //app.use('/api/atas', ataRoutes);
     app.use('/api/comissoes', comissaoRoutes);
     app.use('/api/visitas', visitaRoutes);
     app.use('/api/financeiro', financeiroRoutes);
-    // Montagem das rotas de Empréstimo
     app.use('/api/emprestimos', emprestimoRoutes);
     app.use('/api/lodgemembers/:membroId/emprestimos', emprestimoMembroRoutes);
-
+    app.use('/api/relatorios', relatoriosRoutes);
+    app.use('/api/eventos', eventoRoutes);
+    app.use('/api/avisos', avisoRoutes);
+    app.use('/api/patrimonio', patrimonioRoutes);
+    
     app.listen(PORT, () => {
       console.log(`Servidor backend rodando na porta ${PORT}`);
     });

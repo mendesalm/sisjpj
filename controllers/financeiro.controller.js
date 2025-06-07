@@ -1,10 +1,13 @@
 // controllers/financeiro.controller.js
+// VERSÃO FINAL: Funcionalidade de PDF e CRUD de Contas foram reativadas e integradas.
 import db from '../models/index.js';
+import { gerarPdfBalancete } from '../utils/pdfGenerator.js';
 const { Lancamento, Conta, LodgeMember, Sequelize } = db;
 const { Op } = Sequelize;
 
 // --- CRUD para o Plano de Contas ---
 
+// Criar uma nova conta (Receita/Despesa)
 export const createConta = async (req, res) => {
     try {
         const novaConta = await Conta.create(req.body);
@@ -17,6 +20,7 @@ export const createConta = async (req, res) => {
     }
 };
 
+// Listar todas as contas do plano
 export const getAllContas = async (req, res) => {
     try {
         const contas = await Conta.findAll({ order: [['tipo', 'ASC'], ['nome', 'ASC']] });
@@ -26,7 +30,6 @@ export const getAllContas = async (req, res) => {
     }
 };
 
-// --- FUNÇÃO ADICIONADA ---
 // Atualizar uma conta existente
 export const updateConta = async (req, res) => {
     try {
@@ -45,19 +48,17 @@ export const updateConta = async (req, res) => {
     }
 };
 
-// --- FUNÇÃO ADICIONADA ---
 // Deletar uma conta do plano de contas
 export const deleteConta = async (req, res) => {
     try {
         const { id } = req.params;
-        // Regra de Negócio: Verificar se a conta tem lançamentos associados antes de deletar.
+        // Regra de Negócio: Não permite deletar uma conta se ela tiver lançamentos associados.
         const lancamentosCount = await Lancamento.count({ where: { contaId: id } });
         if (lancamentosCount > 0) {
-            return res.status(409).json({ // 409 Conflict é um status apropriado aqui
+            return res.status(409).json({ // 409 Conflict
                 message: `Não é possível deletar esta conta, pois ela já possui ${lancamentosCount} lançamento(s) associado(s).`
             });
         }
-
         const deleted = await Conta.destroy({ where: { id: id } });
         if (!deleted) {
             return res.status(404).json({ message: 'Conta não encontrada.' });
@@ -71,9 +72,10 @@ export const deleteConta = async (req, res) => {
 
 // --- CRUD para Lançamentos ---
 
+// Criar um novo lançamento (Receita ou Despesa)
 export const createLancamento = async (req, res) => {
   const { descricao, valor, dataLancamento, contaId, membroId, comprovanteUrl } = req.body;
-  const criadoPorId = req.user.id;
+  const criadoPorId = req.user.id; // ID do usuário logado, fornecido pelo authMiddleware
 
   try {
     const novoLancamento = await Lancamento.create({
@@ -88,6 +90,7 @@ export const createLancamento = async (req, res) => {
   }
 };
 
+// Listar todos os lançamentos com filtros
 export const getAllLancamentos = async (req, res) => {
   const { mes, ano, tipo, contaId } = req.query;
   const whereClause = {};
@@ -103,7 +106,7 @@ export const getAllLancamentos = async (req, res) => {
   
   const includeContaWhere = {};
   if (tipo) {
-      includeContaWhere.tipo = tipo;
+      includeContaWhere.tipo = tipo; // 'Receita' ou 'Despesa'
   }
 
   try {
@@ -124,32 +127,82 @@ export const getAllLancamentos = async (req, res) => {
 
 // --- Relatórios ---
 
+// Gerar um balancete simples
 export const getBalancete = async (req, res) => {
     const { mes, ano } = req.query;
     if (!mes || !ano) {
         return res.status(400).json({ message: 'Mês e ano são obrigatórios para gerar o balancete.' });
     }
-    const startDate = new Date(ano, mes - 1, 1);
-    const endDate = new Date(ano, mes, 0);
-
+    
     try {
-        const totalReceitas = await Lancamento.sum('valor', {
-            where: { dataLancamento: { [Op.between]: [startDate, endDate] } },
-            include: [{ model: Conta, as: 'conta', where: { tipo: 'Receita' } }]
-        });
-        const totalDespesas = await Lancamento.sum('valor', {
-            where: { dataLancamento: { [Op.between]: [startDate, endDate] } },
-            include: [{ model: Conta, as: 'conta', where: { tipo: 'Despesa' } }]
-        });
-        const saldo = (totalReceitas || 0) - (totalDespesas || 0);
-
-        res.status(200).json({
-            periodo: `${String(mes).padStart(2, '0')}/${ano}`,
-            totalReceitas: totalReceitas || 0,
-            totalDespesas: totalDespesas || 0,
-            saldo: saldo
-        });
+        const dadosBalancete = await getBalanceteData(mes, ano);
+        res.status(200).json(dadosBalancete);
     } catch (error) {
         res.status(500).json({ message: 'Erro ao gerar balancete.', errorDetails: error.message });
     }
+}
+
+// Exportar o balancete e os lançamentos em PDF
+export const exportBalancetePDF = async (req, res) => {
+    const { mes, ano } = req.query;
+    if (!mes || !ano) {
+        return res.status(400).json({ message: 'Mês e ano são obrigatórios para gerar o relatório.' });
+    }
+
+    try {
+        // 1. Obter os dados do balancete
+        const dadosBalancete = await getBalanceteData(mes, ano);
+
+        // 2. Obter os lançamentos do período
+        const lancamentos = await getAllLancamentosData(mes, ano);
+
+        // 3. Gerar o documento PDF
+        const pdfDoc = gerarPdfBalancete(dadosBalancete, lancamentos);
+
+        // 4. Configurar os headers da resposta para o browser tratar como um download
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `attachment; filename=Balancete_${String(mes).padStart(2, '0')}_${ano}.pdf`);
+
+        // 5. Enviar o PDF como stream para o cliente
+        pdfDoc.pipe(res);
+        pdfDoc.end();
+
+    } catch (error) {
+        console.error('Erro ao gerar PDF do balancete:', error);
+        res.status(500).json({ message: 'Erro ao gerar relatório em PDF.', errorDetails: error.message });
+    }
+};
+
+// Funções auxiliares para buscar os dados e evitar repetição de código
+async function getBalanceteData(mes, ano) {
+    const startDate = new Date(ano, mes - 1, 1);
+    const endDate = new Date(ano, mes, 0);
+
+    const totalReceitas = await Lancamento.sum('valor', {
+        where: { dataLancamento: { [Op.between]: [startDate, endDate] } },
+        include: [{ model: Conta, as: 'conta', where: { tipo: 'Receita' } }]
+    });
+    const totalDespesas = await Lancamento.sum('valor', {
+        where: { dataLancamento: { [Op.between]: [startDate, endDate] } },
+        include: [{ model: Conta, as: 'conta', where: { tipo: 'Despesa' } }]
+    });
+    const saldo = (totalReceitas || 0) - (totalDespesas || 0);
+
+    return {
+        periodo: `${String(mes).padStart(2, '0')}/${ano}`,
+        totalReceitas: totalReceitas || 0,
+        totalDespesas: totalDespesas || 0,
+        saldo: saldo
+    };
+}
+
+async function getAllLancamentosData(mes, ano) {
+    const startDate = new Date(ano, mes - 1, 1);
+    const endDate = new Date(ano, mes, 0);
+
+    return await Lancamento.findAll({
+      where: { dataLancamento: { [Op.between]: [startDate, endDate] } },
+      include: [{ model: Conta, as: 'conta', required: true }],
+      order: [['dataLancamento', 'ASC']],
+    });
 }
