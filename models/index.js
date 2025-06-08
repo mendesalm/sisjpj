@@ -81,7 +81,8 @@ const modelDefinitions = [
   { key: 'Aviso', file: 'aviso.model.js' },
   { key: 'Patrimonio', file: 'patrimonio.model.js' },
   { key: 'Orcamento', file: 'orcamento.model.js' },
-  { key: 'Reserva', file: 'reserva.model.js' }
+  { key: 'Reserva', file: 'reserva.model.js' },
+  { key: 'MenuItem', file: 'menu_item.model.js' }
 ];
 
 const loadModel = async (modelFileName) => {

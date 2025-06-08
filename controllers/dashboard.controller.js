@@ -1,7 +1,9 @@
 // controllers/dashboard.controller.js
 import db from '../models/index.js';
-const { LodgeMember, Evento, FamilyMember, Emprestimo, Lancamento, Conta, Sequelize } = db;
-const { Op, fn, col, literal } = Sequelize;
+import { getAllowedFeaturesForUser } from '../services/permission.service.js';
+
+const { LodgeMember, Evento, FamilyMember, Emprestimo, Lancamento, Conta, MenuItem, Sequelize } = db;
+const { Op } = Sequelize;
 
 // --- Funções Auxiliares para buscar os dados ---
 
@@ -77,15 +79,53 @@ const getEmprestimosPendentes = async (membroId) => {
   });
 };
 
-// --- Controller Principal do Dashboard ---
+// --- NOVA FUNÇÃO AUXILIAR ---
+const getMenuForUser = async (user) => {
+    const allowedFeatures = await getAllowedFeaturesForUser(user);
+
+    if (!db.MenuItem) {
+        console.warn("Modelo MenuItem não encontrado. O menu dinâmico não será gerado.");
+        return [];
+    }
+
+    const menuItems = await db.MenuItem.findAll({
+        where: {
+            requiredFeature: {
+                [Op.in]: allowedFeatures
+            },
+            parentId: null // Começa com os itens de menu de nível superior
+        },
+        include: [{
+            model: db.MenuItem,
+            as: 'children',
+            where: {
+                requiredFeature: {
+                    [Op.in]: allowedFeatures
+                }
+            },
+            required: false, // LEFT JOIN para incluir pais mesmo sem filhos permitidos
+        }],
+        order: [
+            ['ordem', 'ASC'],
+            // Ordena os filhos também
+            [{ model: db.MenuItem, as: 'children' }, 'ordem', 'ASC']
+        ]
+    });
+    return menuItems;
+};
+
+// --- Controller Principal do Dashboard (ATUALIZADO) ---
 
 export const getDashboardData = async (req, res) => {
   try {
     const { credencialAcesso, id: membroId } = req.user;
     let dashboardData = {};
 
-    // Dados comuns a todos os perfis
-    const proximosEventos = await getProximosEventos();
+    // Obtém os dados do menu e os dados resumidos em paralelo
+    const [menu, proximosEventos] = await Promise.all([
+        getMenuForUser(req.user),
+        getProximosEventos()
+    ]);
 
     if (credencialAcesso === 'Webmaster' || credencialAcesso === 'Diretoria') {
       // Dashboard Administrativo
@@ -101,6 +141,7 @@ export const getDashboardData = async (req, res) => {
         totalMembros,
         proximosAniversariantes,
         proximosEventos,
+        menuItems: menu, // Adiciona o menu dinâmico à resposta
       };
     } else {
       // Dashboard do Membro Comum
@@ -110,6 +151,7 @@ export const getDashboardData = async (req, res) => {
         tipo: 'membro',
         emprestimosPendentes,
         proximosEventos,
+        menuItems: menu, // Adiciona o menu dinâmico à resposta
       };
     }
 

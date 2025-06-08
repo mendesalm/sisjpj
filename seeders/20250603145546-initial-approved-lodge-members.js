@@ -1,55 +1,112 @@
+// seeders/20250603145546-initial-approved-lodge-members.js
 'use strict';
-const bcrypt = require('bcryptjs'); // Mude de import para require
+const bcrypt = require('bcryptjs');
 
+// --- CORREÇÃO ADICIONADA ---
+// Carrega as variáveis de ambiente do ficheiro .env
+// Garante que as senhas iniciais estejam disponíveis em process.env
+require('dotenv').config({ path: require('path').resolve(__dirname, '../.env') });
+
+/** @type {import('sequelize-cli').Migration} */
 module.exports = {
   async up (queryInterface, Sequelize) {
-    const saltRounds = 10;
-    const senhaPlanaAdmin = process.env.ADMIN_INITIAL_PASSWORD || 'SenhaWebmasterPadrao1!'; 
-    const senhaHashAdmin = await bcrypt.hash(senhaPlanaAdmin, saltRounds);
+    const now = new Date();
 
-    const senhaPlanaWebamaster = process.env.WEBMASTER_INITIAL_PASSWORD || 'SenhaWebmasterPadrao1!'; 
-    const senhaHashWebmaster = await bcrypt.hash(senhaPlanaWebamaster, saltRounds);
+    // Garante que as senhas foram carregadas do .env antes de continuar
+    if (!process.env.ADMIN_INITIAL_PASSWORD || !process.env.WEBMASTER_INITIAL_PASSWORD) {
+      throw new Error('As senhas iniciais (ADMIN_INITIAL_PASSWORD, WEBMASTER_INITIAL_PASSWORD, etc.) não foram encontradas no ficheiro .env');
+    }
+    
+    // Gera o hash das senhas antes da inserção
+    const hashedPasswordAdmin = await bcrypt.hash(process.env.ADMIN_INITIAL_PASSWORD, 10);
+    const hashedPasswordWebmaster = await bcrypt.hash(process.env.WEBMASTER_INITIAL_PASSWORD, 10);
+    const hashedPasswordDiretoria = await bcrypt.hash(process.env.DIRETORIA_INITIAL_PASSWORD, 10);
+    const hashedPasswordMembro = await bcrypt.hash(process.env.MEMBRO_INITIAL_PASSWORD, 10);
 
-    const senhaPlanaDiretoria = process.env.DIRETORIA_INITIAL_PASSWORD || 'SenhaDiretoriaPadrao1!';
-    const senhaHashDiretoria = await bcrypt.hash(senhaPlanaDiretoria, saltRounds);
+    const cpfsParaDeletar = [
+      '000.000.000-01',
+      '000.000.000-02',
+      '000.000.000-03',
+      '000.000.000-04'
+    ];
+    // Limpa os utilizadores existentes para evitar erros de duplicidade ao executar o seeder novamente
+    await queryInterface.bulkDelete('LodgeMembers', {
+      CPF: { [Sequelize.Op.in]: cpfsParaDeletar }
+    }, {});
 
-    const senhaPlanaMembro = process.env.MEMBRO_INITIAL_PASSWORD || 'SenhaMembroPadrao1!';
-    const senhaHashMembro = await bcrypt.hash(senhaPlanaMembro, saltRounds);
 
     await queryInterface.bulkInsert('LodgeMembers', [
       {
-        NomeCompleto: 'Webmaster Principal', Email: 'webmaster@sua-loja.com', CPF: '000.000.000-00',
-        SenhaHash: senhaHashWebmaster, credencialAcesso: 'Webmaster', Graduacao: 'Mestre Instalado',
-        statusCadastro: 'Aprovado', Situacao: 'Ativo', DataNascimento: '1980-01-01',
-        createdAt: new Date(), updatedAt: new Date()
+        NomeCompleto: 'Andre Luiz Mendes',
+        CIM: '272875',
+        CPF: '831.059.806-87',
+        Email: 'mendesalm@gmail.com',
+        DataNascimento: new Date('1974-07-23'),
+        SenhaHash: hashedPasswordAdmin,
+        credencialAcesso: 'Webmaster',
+        statusCadastro: 'Aprovado',
+        Situacao: 'Ativo',
+        Graduacao: 'Mestre',
+        createdAt: now,
+        updatedAt: now
       },
       {
-        NomeCompleto: 'André Luiz Mendes', Email: 'mendesalm@gmail.com', CPF: '831.059.806-87',
-        SenhaHash: senhaHashAdmin, credencialAcesso: 'Webmaster', Graduacao: 'Mestre',
-        statusCadastro: 'Aprovado', Situacao: 'Ativo', DataNascimento: '1974-07-23',
-        createdAt: new Date(), updatedAt: new Date()
+        NomeCompleto: 'Webmaster SysJPJ',
+        CIM: '000001',
+        CPF: '000.000.000-02',
+        Email: 'webmaster@sysjpj.com',
+        DataNascimento: new Date('1990-01-01'),
+        SenhaHash: hashedPasswordWebmaster,
+        credencialAcesso: 'Webmaster',
+        statusCadastro: 'Aprovado',
+        Situacao: 'Ativo',
+        Graduacao: 'Mestre',
+        createdAt: now,
+        updatedAt: now
       },
       {
-        NomeCompleto: 'Maçom Diretor', Email: 'diretor@sua-loja.com', CPF: '222.222.222-22',
-        SenhaHash: senhaHashDiretoria, credencialAcesso: 'Diretoria', Graduacao: 'Companheiro',
-        statusCadastro: 'Aprovado', Situacao: 'Ativo', DataNascimento: '1990-01-01',
-        createdAt: new Date(), updatedAt: new Date()
+        NomeCompleto: 'Membro Diretoria',
+        CIM: '000002',
+        CPF: '000.000.000-03',
+        Email: 'diretoria@sysjpj.com',
+        DataNascimento: new Date('1990-01-01'),
+        SenhaHash: hashedPasswordDiretoria,
+        credencialAcesso: 'Diretoria',
+        statusCadastro: 'Aprovado',
+        Situacao: 'Ativo',
+        Graduacao: 'Mestre',
+        createdAt: now,
+        updatedAt: now
       },
       {
-        NomeCompleto: 'Maçom Padrão', Email: 'membro@sua-loja.com', CPF: '333.333.333-33',
-        SenhaHash: senhaHashMembro, credencialAcesso: 'Membro', Graduacao: 'Companheiro',
-        statusCadastro: 'Aprovado', Situacao: 'Ativo', DataNascimento: '1990-01-01',
-        createdAt: new Date(), updatedAt: new Date()
-      }      
-    ], {}); //
-    console.log('Seed (CommonJS): Maçons iniciais aprovados inseridos com sucesso.')
+        NomeCompleto: 'Membro Comum',
+        CIM: '000003',
+        CPF: '000.000.000-04',
+        Email: 'membro@sysjpj.com',
+        DataNascimento: new Date('1990-01-01'),
+        SenhaHash: hashedPasswordMembro,
+        credencialAcesso: 'Membro',
+        statusCadastro: 'Aprovado',
+        Situacao: 'Ativo',
+        Graduacao: 'Mestre',
+        createdAt: now,
+        updatedAt: now
+      }
+    ], {});
+
+    console.log('Seed (CommonJS): Maçons iniciais aprovados inseridos com sucesso.');
   },
 
   async down (queryInterface, Sequelize) {
+    // Aprimorado para deletar apenas os utilizadores criados por este seeder
+    const cpfsParaDeletar = [
+      '000.000.000-01',
+      '000.000.000-02',
+      '000.000.000-03',
+      '000.000.000-04'
+    ];
     await queryInterface.bulkDelete('LodgeMembers', {
-      Email: ['webmaster@sua-loja.com', 'mendesalm@gmail.com','diretoria@sua-loja.com', 'membro@sua-loja.com']
-    }, {}); //
-    console.log('Seed (CommonJS): Maçons iniciais aprovados removidos.');
+      CPF: { [Sequelize.Op.in]: cpfsParaDeletar }
+    }, {});
   }
 };
-
