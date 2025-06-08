@@ -8,7 +8,7 @@ export default (sequelize, DataTypes) => {
     dataHoraFim: { type: DataTypes.DATE, allowNull: true, validate: { isDate: true } },
     local: { type: DataTypes.STRING, allowNull: false, validate: { notEmpty: true } },
     tipo: { type: DataTypes.ENUM('Sessão Maçônica', 'Evento Social', 'Evento Filantrópico', 'Outro'), allowNull: false },
-    criadoPorId: { // Adicionando a coluna explicitamente para clareza
+    criadoPorId: {
       type: DataTypes.INTEGER,
       allowNull: true,
     },
@@ -20,7 +20,7 @@ export default (sequelize, DataTypes) => {
   Evento.associate = function(models) {
     Evento.belongsTo(models.LodgeMember, {
         as: 'criador',
-        foreignKey: { name: 'criadoPorId', allowNull: true }, // <-- CORRIGIDO AQUI
+        foreignKey: { name: 'criadoPorId', allowNull: true },
         onDelete: 'SET NULL'
     });
     Evento.belongsToMany(models.LodgeMember, {
@@ -29,6 +29,7 @@ export default (sequelize, DataTypes) => {
       foreignKey: 'eventoId',
       otherKey: 'lodgeMemberId'
     });
+    Evento.hasMany(models.FotoEvento, { as: 'fotos', foreignKey: 'eventoId' });
   };
 
   return Evento;

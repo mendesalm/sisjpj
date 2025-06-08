@@ -8,14 +8,12 @@ import {
   lancamentoRules,
   relatorioQueryRules,
   contaIdParamRule,
-  orcamentoRules, // <-- Importado
-  orcamentoQueryRules, // <-- Importado
+  orcamentoRules,
+  orcamentoQueryRules,
   handleValidationErrors
 } from '../validators/financeiro.validator.js';
 
 const router = express.Router();
-
-// Protege todas as rotas financeiras com autenticação
 router.use(authMiddleware);
 
 // --- Rotas para Plano de Contas ---
@@ -31,6 +29,15 @@ router.get(
     '/contas',
     authorizeByFeature('visualizarRelatorioFinanceiro'),
     financeiroController.getAllContas
+);
+
+// --- ROTA ADICIONADA ---
+router.get(
+    '/contas/:id',
+    authorizeByFeature('visualizarRelatorioFinanceiro'), // Reutiliza a permissão de visualização
+    contaIdParamRule,
+    handleValidationErrors,
+    financeiroController.getContaById
 );
 
 router.put(

@@ -30,6 +30,19 @@ export const getAllContas = async (req, res) => {
     }
 };
 
+// Obter uma conta específica por ID
+export const getContaById = async (req, res) => {
+    try {
+        const conta = await Conta.findByPk(req.params.id);
+        if (!conta) {
+            return res.status(404).json({ message: 'Conta não encontrada.' });
+        }
+        res.status(200).json(conta);
+    } catch (error) {
+        res.status(500).json({ message: 'Erro ao buscar conta.', errorDetails: error.message });
+    }
+};
+
 // Atualizar uma conta existente
 export const updateConta = async (req, res) => {
     try {

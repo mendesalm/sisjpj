@@ -84,10 +84,8 @@ export default (sequelize, DataTypes) => {
   };
 
   LodgeMember.associate = function(models) {
-    // Relações existentes e novas, agora mais limpas e completas
+    // Relação 1-para-Muitos: Um membro pode ter muitos...
     LodgeMember.hasMany(models.FamilyMember, { as: 'familiares', foreignKey: 'lodgeMemberId' });
-    LodgeMember.belongsToMany(models.MasonicSession, { through: models.SessionAttendee, as: 'sessoesPresente', foreignKey: 'lodgeMemberId', otherKey: 'sessionId' });
-    LodgeMember.hasMany(models.MasonicSession, { as: 'sessoesResponsavelJantar', foreignKey: 'responsavelJantarLodgeMemberId' });
     LodgeMember.hasMany(models.CargoExercido, { as: 'cargos', foreignKey: 'lodgeMemberId' });
     LodgeMember.hasMany(models.Publicacao, { as: 'publicacoes', foreignKey: 'lodgeMemberId' });
     LodgeMember.hasMany(models.Harmonia, { as: 'harmonias', foreignKey: 'lodgeMemberId' });
@@ -95,11 +93,29 @@ export default (sequelize, DataTypes) => {
     LodgeMember.hasMany(models.Emprestimo, { as: 'emprestimos', foreignKey: 'membroId' });
     LodgeMember.hasMany(models.Visita, { as: 'visitas', foreignKey: 'lodgeMemberId' });
     LodgeMember.hasMany(models.Condecoracao, { as: 'condecoracoes', foreignKey: 'lodgeMemberId' });
+    LodgeMember.hasMany(models.Patrimonio, { as: 'patrimoniosRegistrados', foreignKey: 'registradoPorId' });
+    LodgeMember.hasMany(models.Aviso, { as: 'avisosCriados', foreignKey: 'autorId' });
+    LodgeMember.hasMany(models.FotoEvento, { as: 'fotosEnviadas', foreignKey: 'uploaderId' });
     LodgeMember.hasMany(models.Comissao, { as: 'comissoesCriadas', foreignKey: 'criadorId' });
-    LodgeMember.belongsToMany(models.Comissao, { through: models.MembroComissao, as: 'comissoes', foreignKey: 'lodgeMemberId', otherKey: 'comissaoId' });
     LodgeMember.hasMany(models.Evento, { as: 'eventosCriados', foreignKey: 'criadoPorId' });
-    LodgeMember.belongsToMany(models.Evento, { through: models.ParticipanteEvento, as: 'eventosConfirmados', foreignKey: 'lodgeMemberId', otherKey: 'eventoId' });
+    
+    // --- CORREÇÃO E ADIÇÃO ---
+    // Relações com a tabela Lancamentos
+    LodgeMember.hasMany(models.Lancamento, { as: 'lancamentosAssociados', foreignKey: 'membroId' }); // Lançamentos onde este membro é a parte interessada.
+    LodgeMember.hasMany(models.Lancamento, { as: 'lancamentosRegistrados', foreignKey: 'criadoPorId' }); // Lançamentos que este membro registou no sistema.
+
+    // Relação com a tabela Reservas
+    LodgeMember.hasMany(models.Reserva, { as: 'reservas', foreignKey: 'membroId' });
+
+    // Relações Muitos-para-Muitos
+    LodgeMember.belongsToMany(models.MasonicSession, { through: 'SessionAttendees', as: 'sessoesPresente', foreignKey: 'lodgeMemberId', otherKey: 'sessionId' });
+    LodgeMember.belongsToMany(models.Comissao, { through: 'MembroComissoes', as: 'comissoes', foreignKey: 'lodgeMemberId', otherKey: 'comissaoId' });
+    LodgeMember.belongsToMany(models.Evento, { through: 'ParticipantesEvento', as: 'eventosConfirmados', foreignKey: 'lodgeMemberId', otherKey: 'eventoId' });
+    
+    // Relação especial para o responsável pelo jantar na sessão
+    LodgeMember.hasMany(models.MasonicSession, { as: 'sessoesResponsavelJantar', foreignKey: 'responsavelJantarLodgeMemberId' });
   };
 
   return LodgeMember;
 };
+

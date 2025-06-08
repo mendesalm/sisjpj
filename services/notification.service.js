@@ -1,7 +1,7 @@
 // services/notification.service.js
 import db from '../models/index.js';
 import sendEmail from '../utils/emailSender.js';
-import { Op, fn, col, literal } from 'sequelize';
+import { Op } from 'sequelize';
 
 const { LodgeMember, Evento, FamilyMember, Emprestimo, Biblioteca, CargoExercido } = db;
 
@@ -23,7 +23,7 @@ export const notificarNovoCadastroPendente = async (novoMembro) => {
     const text = `Um novo membro, ${novoMembro.NomeCompleto}, cadastrou-se no sistema e aguarda aprovação.`;
     const html = `<p>Olá,</p><p>Um novo membro, <strong>${novoMembro.NomeCompleto}</strong> (Email: ${novoMembro.Email}), cadastrou-se no sistema e aguarda a sua aprovação.</p><p>Por favor, acesse o painel de administração para revisar o cadastro.</p><p>Atenciosamente,<br>Sistema SysJPJ</p>`;
 
-    await sendEmail(emails, subject, text, html);
+    await sendEmail({ to: emails, subject, text, html });
   } catch (error) {
     console.error("Erro ao enviar notificação de novo cadastro:", error);
   }
@@ -57,18 +57,63 @@ export const enviarAgendaSemanal = async () => {
     });
     html += '</ul>';
 
-    await sendEmail(emails, subject, "Agenda da semana", html);
+    await sendEmail({ to: emails, subject, text: "Agenda da semana", html });
   } catch (error) {
     console.error("Erro ao enviar agenda semanal:", error);
   }
 };
 
+// --- FUNÇÃO IMPLEMENTADA ---
 // Função para enviar os aniversariantes da semana
 export const enviarAniversariantesSemanal = async () => {
-    // A lógica para buscar aniversariantes (ignorando o ano) é a mesma do relatório
-    // Por simplicidade, este exemplo foca no conceito.
-    // Você pode adaptar a lógica da função gerarRelatorioAniversariantes do seu controller de relatórios.
-    console.log("Funcionalidade de email de aniversariantes a ser implementada.");
+    try {
+        const hoje = new Date();
+        const proximaSemana = new Date();
+        proximaSemana.setDate(hoje.getDate() + 7);
+
+        const membrosAtivos = await LodgeMember.findAll({ where: { Situacao: 'Ativo' }, attributes: ['NomeCompleto', 'DataNascimento', 'Email'] });
+        const familiares = await FamilyMember.findAll({ include: [{ model: LodgeMember, as: 'membro', attributes: ['NomeCompleto'], required: true }] });
+
+        const todosAniversariantes = [
+            ...membrosAtivos.map(m => ({ nome: m.NomeCompleto, data: m.DataNascimento, tipo: 'Membro' })),
+            ...familiares.map(f => ({ nome: f.nomeCompleto, data: f.dataNascimento, tipo: `Familiar (${f.parentesco})` }))
+        ];
+
+        const aniversariantesDaSemana = todosAniversariantes.filter(pessoa => {
+            if (!pessoa.data) return false;
+            const aniversario = new Date(pessoa.data);
+            aniversario.setFullYear(hoje.getFullYear());
+            if (aniversario < hoje) {
+                aniversario.setFullYear(hoje.getFullYear() + 1);
+            }
+            return aniversario >= hoje && aniversario <= proximaSemana;
+        }).sort((a, b) => {
+            const dataA = new Date(a.data); dataA.setFullYear(2000);
+            const dataB = new Date(b.data); dataB.setFullYear(2000);
+            return dataA - dataB;
+        });
+
+        if (aniversariantesDaSemana.length === 0) {
+            console.log('Nenhum aniversário na próxima semana. Email de aniversariantes não enviado.');
+            return;
+        }
+
+        const todosEmails = membrosAtivos.map(m => m.Email).join(',');
+        if (!todosEmails) return;
+
+        const subject = 'SysJPJ - Aniversariantes da Semana';
+        let html = '<h1>Aniversariantes da Semana</h1><p>A Loja parabeniza os seguintes aniversariantes da semana:</p><ul>';
+        aniversariantesDaSemana.forEach(aniv => {
+            const dataFormatada = new Date(aniv.data).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', timeZone: 'UTC' });
+            html += `<li><strong>${aniv.nome}</strong> (${aniv.tipo}) - ${dataFormatada}</li>`;
+        });
+        html += '</ul><p>Felicidades a todos!</p>';
+
+        await sendEmail({ to: todosEmails, subject, text: "Aniversariantes da semana", html });
+
+    } catch (error) {
+        console.error("Erro ao enviar email de aniversariantes:", error);
+    }
 };
 
 // Função para alertar o Bibliotecário sobre livros atrasados
@@ -113,53 +158,9 @@ export const alertarSobreLivrosAtrasados = async () => {
     });
     html += '</ul>';
 
-    await sendEmail(emails, subject, "Alerta de livros atrasados", html);
+    await sendEmail({ to: emails, subject, text: "Alerta de livros atrasados", html });
 
   } catch (error) {
     console.error("Erro ao enviar alerta de livros atrasados:", error);
-  }
-};
-
-export const notificarProximoDaFila = async (livroId, models) => {
-  const { Reserva, Biblioteca, LodgeMember, sendEmail } = models;
-  try {
-    const proximaReserva = await Reserva.findOne({
-      where: { livroId, status: 'Ativa' },
-      order: [['dataReserva', 'ASC']],
-      include: [
-        { model: Biblioteca, as: 'livro' },
-        { model: LodgeMember, as: 'membro', attributes: ['Email', 'NomeCompleto'] }
-      ]
-    });
-
-    if (!proximaReserva) {
-      return false; // Não há ninguém na fila de reserva
-    }
-
-    // Define o prazo para retirada
-    const dataExpiracao = new Date();
-    dataExpiracao.setDate(dataExpiracao.getDate() + 3); // Prazo de 3 dias
-
-    // Atualiza o status da reserva e do livro
-    await proximaReserva.update({
-      status: 'Notificada',
-      notificadoEm: new Date(),
-      reservaExpiraEm: dataExpiracao
-    });
-    await proximaReserva.livro.update({ status: 'Reservado' });
-
-    // Envia o email de notificação
-    const subject = `SysJPJ - Livro Reservado Disponível: "${proximaReserva.livro.titulo}"`;
-    const text = `Olá, ${proximaReserva.membro.NomeCompleto}. O livro "${proximaReserva.livro.titulo}", que você reservou, está agora disponível para retirada. Você tem até ${dataExpiracao.toLocaleDateString('pt-BR')} para retirá-lo.`;
-    const html = `<p>Olá, <strong>${proximaReserva.membro.NomeCompleto}</strong>.</p><p>O livro <strong>"${proximaReserva.livro.titulo}"</strong>, que você reservou, está agora disponível para retirada na biblioteca.</p><p>Você tem até o dia <strong>${dataExpiracao.toLocaleDateString('pt-BR')}</strong> para retirá-lo. Após essa data, a sua reserva irá expirar.</p>`;
-    
-    await sendEmail({ to: proximaReserva.membro.Email, subject, text, html });
-
-    console.log(`Membro ${proximaReserva.membro.NomeCompleto} notificado sobre a disponibilidade do livro ID ${livroId}.`);
-    return true; // Notificação enviada com sucesso
-
-  } catch (error) {
-    console.error(`Erro ao notificar próximo da fila para o livro ID ${livroId}:`, error);
-    return false;
   }
 };

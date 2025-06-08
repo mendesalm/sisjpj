@@ -3,6 +3,7 @@ import express from 'express';
 import authMiddleware from '../middlewares/auth.middleware.js';
 import { authorizeByFeature } from '../middlewares/authorizeByFeature.middleware.js';
 import * as eventoController from '../controllers/evento.controller.js';
+import fotoRoutes from './foto_evento.routes.js'
 import {
   eventoRules,
   eventoIdParamRule,
@@ -52,5 +53,5 @@ router.post('/:eventoId/presenca',
   handleValidationErrors,
   eventoController.confirmarPresenca
 );
-
+router.use('/:eventoId/fotos', fotoRoutes);
 export default router;
